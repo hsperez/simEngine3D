@@ -79,6 +79,15 @@ while error > 0.001
    e_con = eGcon(p_j(:,i-1));
    
    
+   Multiplier = [r_p_j(1,i-1) 0 0 0 0 0 0;
+                 0 r_p_j(2,i-1) 0 0 0 0 0;
+                 0 0 r_p_j(3,i-1) 0 0 0 0;
+                 0 0 0 r_p_j(4,i-1) 0 0 0;
+                 0 0 0 0 r_p_j(5,i-1) 0 0;
+                 0 0 0 0 0 r_p_j(6,i-1) 0;
+                 0 0 0 0 0 0 r_p_j(7,i-1)];
+   
+   
    Jacobian = [CD_1.Phi_r_j,CD_1.Phi_p_j;
                CD_2.Phi_r_j,CD_2.Phi_p_j;
                CD_3.Phi_r_j,CD_3.Phi_p_j;
