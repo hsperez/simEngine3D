@@ -29,7 +29,7 @@ zo = -1;
 
 r_j_o = [xo; yo; zo];
 
-p_j_o = [0.707; -.2; .7; -.2];
+p_j_o = [0.7; -.2; .7; -.2];
 
 a_j_bar_x = [1; 0; 0];
 a_j_bar_y = [0; 1; 0];
@@ -60,80 +60,175 @@ p_j(:,1) = p_j_o;
 
 r_p_j(:,1) = [r_j(:,1).',p_j(:,1).'].';
 
+Total_t = 10; 
+h = 1e-3;
 
+steps = Total_t/h;
+
+r_p_j_t = zeros(8,steps);
+
+p_j_dot =  zeros(4,steps);
+p_check = zeros(1,steps);
+
+
+nu_j = zeros(1,steps);
+gamma_j = zeros(1,steps);
 
     t = 0; 
-
+for k = 1:steps
+    
+    t = h*(k-1);
+    
     [f, df, ddf] = fun(t);
 
 
     error = 1;
     error_r = zeros(7,1);
+    
+    i = 2;
 
-while error > 0.000001
+    while error > 0.000001
 
-   CD_1 =  GconCD(c_x, 0, 0, 0, r_i, r_j(:,i-1), p_i, p_j(:,i-1), s_i_bar, s_j_bar);
-   CD_2 =  GconCD(c_y, 0, 0, 0, r_i, r_j(:,i-1), p_i, p_j(:,i-1), s_i_bar, s_j_bar);
-   CD_3 =  GconCD(c_z, 0, 0, 0, r_i, r_j(:,i-1), p_i, p_j(:,i-1), s_i_bar, s_j_bar);
-   DP1_1 = GconDP1(0,0,0,p_i,p_j(:,i-1),a_i_bar_z,a_j_bar_z);
-   DP1_2 = GconDP1(0,0,0,p_i,p_j(:,i-1),a_i_bar_y,a_j_bar_z);
-   DP1_3 = GconDP1(sin(f),0,0,p_i,p_j(:,i-1),a_i_bar_y,a_j_bar_x);
-   e_con = eGcon(p_j(:,i-1));
+       CD_1 =  GconCD(c_x, 0, 0, 0, r_i, r_j(:,i-1), p_i, p_j(:,i-1), s_i_bar, s_j_bar);
+       CD_2 =  GconCD(c_y, 0, 0, 0, r_i, r_j(:,i-1), p_i, p_j(:,i-1), s_i_bar, s_j_bar);
+       CD_3 =  GconCD(c_z, 0, 0, 0, r_i, r_j(:,i-1), p_i, p_j(:,i-1), s_i_bar, s_j_bar);
+       DP1_1 = GconDP1(0,0,0,p_i,p_j(:,i-1),a_i_bar_z,a_j_bar_z,zeros(4,1), zeros(4,1));
+       DP1_2 = GconDP1(0,0,0,p_i,p_j(:,i-1),a_i_bar_y,a_j_bar_z,zeros(4,1), zeros(4,1));
+       DP1_3 = GconDP1(sin(f),0,0,p_i,p_j(:,i-1),a_i_bar_y,a_j_bar_x,zeros(4,1), zeros(4,1));
+       e_con = eGcon(p_j(:,i-1));
+
+
+       Multiplier = [r_p_j(1,i-1) 0 0 0 0 0 0;
+                     0 r_p_j(2,i-1) 0 0 0 0 0;
+                     0 0 r_p_j(3,i-1) 0 0 0 0;
+                     0 0 0 r_p_j(4,i-1) 0 0 0;
+                     0 0 0 0 r_p_j(5,i-1) 0 0;
+                     0 0 0 0 0 r_p_j(6,i-1) 0;
+                     0 0 0 0 0 0 r_p_j(7,i-1)];
+
+
+       Jacobian = [CD_1.Phi_r_j,CD_1.Phi_p_j;
+                   CD_2.Phi_r_j,CD_2.Phi_p_j;
+                   CD_3.Phi_r_j,CD_3.Phi_p_j;
+                   DP1_1.Phi_r_j,DP1_1.Phi_p_j;
+                   DP1_2.Phi_r_j,DP1_2.Phi_p_j;
+                   DP1_3.Phi_r_j,DP1_3.Phi_p_j;
+                   e_con.Phi_r_j, e_con.Phi_p_j];
+
+
+        Ultimate_Phi = [CD_1.Phi;
+                        CD_2.Phi;
+                        CD_3.Phi;
+                        DP1_1.Phi;
+                        DP1_2.Phi;
+                        DP1_3.Phi;
+                        e_con.Phi];
+
+
+
+        r_p_j(:,i) = r_p_j(:,i-1)-(inv(Jacobian))*Ultimate_Phi;
+        
+        
+
+        r_j(:,i) = r_p_j(1:3,i);
+        p_j(:,i) = r_p_j(4:7,i);
+
+
+
+       for m = 1:7
+
+           error_r(m) = (r_p_j(m,i)-r_p_j(m,i-1))/(r_p_j(m,i));
+
+       end
+
+       error = max(error_r);
+
+       i = i +1;
+
+        if i== 100
+            error = 0;
+        end 
+        
+        
+    end
+    
+    
+    r_p_j_t(1:7,k) = r_p_j(:,i-1);
+    r_p_j_t(8,k) = t;
+    
+    
+    r_j = 0*r_j;
+    p_j = 0*p_j;
+    r_p_j = 0*r_p_j;
+    
+    r_j(:,1) = r_p_j_t(1:3,k);
+    p_j(:,1) = r_p_j_t(4:7,k);
+    r_p_j(:,1) = r_p_j_t(1:7,k);
+    
+    p_tilde = tilde(r_p_j_t(5:7,k));
+    
+    p_j_dot(:,k) = (1/2)*[-r_p_j_t(5:7,k), p_tilde+r_p_j_t(4,k)*eye(3)].'*[0; 0; f];
+    
+    DP1_final = GconDP1(sin(f),df,ddf,p_i,p_j(:,i-1),a_i_bar_y,a_j_bar_x,zeros(4,1), p_j_dot(:,k));
+    
+    nu_j(1,k) = DP1_final.nu;
+    gamma_j(1,k) = DP1_final.gamma;
    
-   
-   Multiplier = [r_p_j(1,i-1) 0 0 0 0 0 0;
-                 0 r_p_j(2,i-1) 0 0 0 0 0;
-                 0 0 r_p_j(3,i-1) 0 0 0 0;
-                 0 0 0 r_p_j(4,i-1) 0 0 0;
-                 0 0 0 0 r_p_j(5,i-1) 0 0;
-                 0 0 0 0 0 r_p_j(6,i-1) 0;
-                 0 0 0 0 0 0 r_p_j(7,i-1)];
-   
-   
-   Jacobian = [CD_1.Phi_r_j,CD_1.Phi_p_j;
-               CD_2.Phi_r_j,CD_2.Phi_p_j;
-               CD_3.Phi_r_j,CD_3.Phi_p_j;
-               DP1_1.Phi_r_j,DP1_1.Phi_p_j;
-               DP1_2.Phi_r_j,DP1_2.Phi_p_j;
-               DP1_3.Phi_r_j,DP1_3.Phi_p_j;
-               e_con.Phi_r_j, e_con.Phi_p_j];
-           
-           
-    Ultimate_Phi = [CD_1.Phi;
-                    CD_2.Phi;
-                    CD_3.Phi;
-                    DP1_1.Phi;
-                    DP1_2.Phi;
-                    DP1_3.Phi;
-                    e_con.Phi];
+    
+    p_check(1,k) = (r_p_j_t(4:7,k)).'*p_j_dot(:,k);
     
     
-    
-    r_p_j(:,i) = r_p_j(:,i-1)-(inv(Jacobian))*Ultimate_Phi;
-    
-    r_j(:,i) = r_p_j(1:3,i);
-    p_j(:,i) = r_p_j(4:7,i);
-    
-    
-    
-   for m = 1:7
-   
-       error_r(m) = (r_p_j(m,i)-r_p_j(m,i-1))/(r_p_j(m,i));
-       
-   end
-   
-   error = max(error_r);
-    
-   i = i +1;
-   
-    if i== 100
-        error = 0;
-    end 
+
 end
+
+
+t_plot = r_p_j_t(8,1:steps); 
+y_plot = r_p_j_t(2,1:steps);
+z_plot = r_p_j_t(3,1:steps);
+x_plot = r_p_j_t(1,1:steps);
+
+
+
+
+
 
 r_j = r_j(:,1:(i-1));
 p_j = p_j(:,1:(i-1));
 r_p_j = r_p_j(:,1:(i-1));
+
+
+% 
+% for D =1:100
+%     plot(x_plot(1,D*100),y_plot(1,D*100),'or','MarkerSize',5,'MarkerFaceColor','r')
+%     axis([-3 3 -3 3])
+%     pause(.1)
+% end
+
+
+figure;
+
+subplot(5,1,1);
+plot(t_plot,x_plot);
+title('x position');
+
+subplot(5,1,2);
+plot(t_plot,y_plot);
+title('y position');
+
+subplot(5,1,3);
+plot(t_plot,z_plot);
+title('z position');
+
+subplot(5,1,4);
+plot(t_plot,nu_j);
+title('velocity');
+
+subplot(5,1,5);
+plot(t_plot,gamma_j);
+title('acceleration');
+
+
+
 
 %%
 
@@ -145,7 +240,7 @@ r_p_j = r_p_j(:,1:(i-1));
 
 %%
 
-function DP1 = GconDP1(f,df,ddf,p_i,p_j,a_i_bar,a_j_bar) %,p_i_dot, p_j_dot)
+function DP1 = GconDP1(f,df,ddf,p_i,p_j,a_i_bar,a_j_bar,p_i_dot, p_j_dot)
 
     
 
@@ -166,11 +261,11 @@ function DP1 = GconDP1(f,df,ddf,p_i,p_j,a_i_bar,a_j_bar) %,p_i_dot, p_j_dot)
     B_j = B(p_j,a_j_bar);
    
     
-%     B_i_dot = B(p_i_dot,a_i_bar);
-%     B_j_dot = B(p_j_dot,a_j_bar);
+    B_i_dot = B(p_i_dot,a_i_bar);
+    B_j_dot = B(p_j_dot,a_j_bar);
     
-%     a_i_dot = B_i*p_i_dot;
-%     a_j_dot = B_j*p_j_dot;
+    a_i_dot = B_i*p_i_dot;
+    a_j_dot = B_j*p_j_dot;
     
     B_i_bar = B(p_i,a_i_bar);
     B_j_bar = B(p_j,a_j_bar);
@@ -180,7 +275,7 @@ function DP1 = GconDP1(f,df,ddf,p_i,p_j,a_i_bar,a_j_bar) %,p_i_dot, p_j_dot)
     
     DP1.nu = df;
     
-    %DP1.gamma = -(2*a_i_dot.'*a_j_dot)-(a_j.'*B_i_dot*p_i_dot)-(a_i.'*B_j_dot*p_j_dot)+ddf;
+    DP1.gamma = -(2*a_i_dot.'*a_j_dot)-(a_j.'*B_i_dot*p_i_dot)-(a_i.'*B_j_dot*p_j_dot)+ddf;
     
     
     DP1.Phi_r_i = [0 0 0];

@@ -75,9 +75,9 @@ while error > 0.000001
    CD_1 =  GconCD(c_x, 0, 0, 0, r_i, r_j(:,i-1), p_i, p_j(:,i-1), s_i_bar, s_j_bar);
    CD_2 =  GconCD(c_y, 0, 0, 0, r_i, r_j(:,i-1), p_i, p_j(:,i-1), s_i_bar, s_j_bar);
    CD_3 =  GconCD(c_z, 0, 0, 0, r_i, r_j(:,i-1), p_i, p_j(:,i-1), s_i_bar, s_j_bar);
-   DP1_1 = GconDP1(0,0,0,p_i,p_j(:,i-1),a_i_bar_z,a_j_bar_z);
-   DP1_2 = GconDP1(0,0,0,p_i,p_j(:,i-1),a_i_bar_y,a_j_bar_z);
-   DP1_3 = GconDP1(sin(f),0,0,p_i,p_j(:,i-1),a_i_bar_y,a_j_bar_x);
+   DP1_1 = GconDP1(0,0,0,p_i,p_j(:,i-1),a_i_bar_z,a_j_bar_z,zeros(4,1),zeros(4,1));
+   DP1_2 = GconDP1(0,0,0,p_i,p_j(:,i-1),a_i_bar_y,a_j_bar_z,zeros(4,1),zeros(4,1));
+   DP1_3 = GconDP1(sin(f),0,0,p_i,p_j(:,i-1),a_i_bar_y,a_j_bar_x,zeros(4,1),zeros(4,1));
    e_con = eGcon(p_j(:,i-1));
    
    
@@ -131,6 +131,24 @@ while error > 0.000001
     end 
 end
 
+
+    p_tilde = tilde(r_p_j(5:7,i-1));
+    
+    p_j_dot = (1/2)*[-r_p_j(5:7,i-1), p_tilde+r_p_j(4,i-1)*eye(3)].'*[0; 0; f];
+    
+    DP1_final = GconDP1(sin(f),df,ddf,p_i,p_j(:,i-1),a_i_bar_y,a_j_bar_x,zeros(4,1), p_j_dot);
+    
+    x_position = r_p_j(1,i-1)
+    y_position = r_p_j(2,i-1)
+    z_position = r_p_j(3,i-1)
+    nu_j = DP1_final.nu
+    gamma_j = DP1_final.gamma
+   
+    
+    p_check = (r_p_j(4:7,i-1)).'*p_j_dot;
+
+
+
 r_j = r_j(:,1:(i-1));
 p_j = p_j(:,1:(i-1));
 r_p_j = r_p_j(:,1:(i-1));
@@ -145,7 +163,7 @@ r_p_j = r_p_j(:,1:(i-1));
 
 %%
 
-function DP1 = GconDP1(f,df,ddf,p_i,p_j,a_i_bar,a_j_bar) %,p_i_dot, p_j_dot)
+function DP1 = GconDP1(f,df,ddf,p_i,p_j,a_i_bar,a_j_bar,p_i_dot, p_j_dot)
 
     
 
@@ -166,11 +184,11 @@ function DP1 = GconDP1(f,df,ddf,p_i,p_j,a_i_bar,a_j_bar) %,p_i_dot, p_j_dot)
     B_j = B(p_j,a_j_bar);
    
     
-%     B_i_dot = B(p_i_dot,a_i_bar);
-%     B_j_dot = B(p_j_dot,a_j_bar);
+    B_i_dot = B(p_i_dot,a_i_bar);
+    B_j_dot = B(p_j_dot,a_j_bar);
     
-%     a_i_dot = B_i*p_i_dot;
-%     a_j_dot = B_j*p_j_dot;
+    a_i_dot = B_i*p_i_dot;
+    a_j_dot = B_j*p_j_dot;
     
     B_i_bar = B(p_i,a_i_bar);
     B_j_bar = B(p_j,a_j_bar);
@@ -180,7 +198,7 @@ function DP1 = GconDP1(f,df,ddf,p_i,p_j,a_i_bar,a_j_bar) %,p_i_dot, p_j_dot)
     
     DP1.nu = df;
     
-    %DP1.gamma = -(2*a_i_dot.'*a_j_dot)-(a_j.'*B_i_dot*p_i_dot)-(a_i.'*B_j_dot*p_j_dot)+ddf;
+    DP1.gamma = -(2*a_i_dot.'*a_j_dot)-(a_j.'*B_i_dot*p_i_dot)-(a_i.'*B_j_dot*p_j_dot)+ddf;
     
     
     DP1.Phi_r_i = [0 0 0];
